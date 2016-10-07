@@ -10,6 +10,9 @@ DISCOVER_MESSAGE = ('message-type', 1)
 SWITCH_NAME = 'Bedroom'
 matches = matcher(SWITCH_NAME)
 
+class SwitchError(Exception):
+    pass
+
 def main():
     sniff(prn=toggle_switch, filter="port 67 and ether src %s" % TIDE, store=0)
 
@@ -28,7 +31,7 @@ def get_switch():
             found = env.get_switch(switch)
             break
     else:
-        raise Exception('Switch not found!')
+        raise SwitchError('Switch not found!')
 
     return found
 
@@ -37,11 +40,16 @@ def toggle_switch(pkt):
             BOOTP in pkt and
             pkt[BOOTP].op == 1 and
             DISCOVER_MESSAGE in pkt[DHCP].options):
-        switch = get_switch()
-        if switch and switch.get_state():
-            switch.off()
-        else:
-            switch.on()
+        try:
+            switch = get_switch()
+
+            if switch and switch.get_state():
+                switch.off()
+            else:
+                switch.on()
+        except SwitchError, e:
+            switch = None
+            print e
 
 if __name__ == '__main__':
     main()
